@@ -1,11 +1,14 @@
+// presentation/seller/products/products_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../presentation/shared/widgets/custom_button.dart';
 import '../../../providers/product_provider.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/services/link_generator_service.dart';
 import 'add_product_screen.dart';
 import 'widgets/product_card.dart';
+import 'widgets/link_dialog.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -71,6 +74,30 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
               },
             ),
             ListTile(
+              leading: const Icon(Icons.share, color: AppColors.primary),
+              title: const Text('Share Product Link'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareProductLink(product);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link, color: AppColors.primary),
+              title: const Text('Get Product Link'),
+              onTap: () {
+                Navigator.pop(context);
+                _showProductLink(product);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Generate QR Code'),
+              onTap: () {
+                Navigator.pop(context);
+                _showQRCode(product);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
               title: const Text('Delete Product'),
               onTap: () async {
@@ -105,6 +132,101 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
     );
   }
 
+  void _shareProductLink(ProductModel product) async {
+    try {
+      await LinkGeneratorService.generateShareableLink(
+        productId: product.productId,
+        productTitle: product.title,
+        price: product.price,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sharing product: $e')),
+      );
+    }
+  }
+
+  void _showProductLink(ProductModel product) {
+    final productLink = LinkGeneratorService.generateProductLink(product.productId);
+
+    showDialog(
+      context: context,
+      builder: (context) => LinkDialog(
+        productName: product.title,
+        productLink: productLink,
+        qrData: LinkGeneratorService.generateQRCodeData(product.productId),
+      ),
+    );
+  }
+
+  void _showQRCode(ProductModel product) {
+    final qrData = LinkGeneratorService.generateQRCodeData(product.productId);
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Scan to Buy',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              // You can add a QR code widget here
+              // QrImageView(data: qrData, size: 200),
+              Container(
+                width: 200,
+                height: 200,
+                color: Colors.grey[200],
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.qr_code, size: 64, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('QR Code Preview'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                product.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                qrData,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _shareProductLink(product),
+                      child: const Text('Share'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,6 +235,15 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
         title: const Text('Products'),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () {
+              // Bulk share all products
+              _showBulkShareOptions();
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -233,6 +364,7 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
 
                       return RepaintBoundary(
                         child: ProductCard(
+                          productId: product.productId,
                           productName: product.title,
                           price: '${product.price.toStringAsFixed(3)} TND',
                           imageUrl: product.images.isNotEmpty ? product.images.first : 'assets/images/products/headphones-wireless.png',
@@ -244,6 +376,7 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
                             final updatedProduct = product.copyWith(isActive: !product.isActive);
                             await Provider.of<ProductProvider>(context, listen: false).updateProduct(updatedProduct);
                           },
+                          onGenerateLink: () => _showProductLink(product),
                         ),
                       );
                     },
@@ -269,5 +402,63 @@ class _ProductsScreenState extends State<ProductsScreen> with TickerProviderStat
         ),
       ),
     );
+  }
+
+  void _showBulkShareOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share All Products'),
+              subtitle: const Text('Generate links for all active products'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareAllProducts();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code),
+              title: const Text('Generate QR Codes'),
+              subtitle: const Text('Create QR codes for all products'),
+              onTap: () {
+                Navigator.pop(context);
+                // Implement bulk QR generation
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareAllProducts() async {
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final activeProducts = productProvider.products.where((p) => p.isActive).toList();
+
+    if (activeProducts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No active products to share')),
+      );
+      return;
+    }
+
+    final shareText = StringBuffer('🛍️ **My Products**\n\n');
+
+    for (final product in activeProducts) {
+      final productLink = LinkGeneratorService.generateProductLink(product.productId);
+      shareText.write('''
+📦 ${product.title}
+💰 ${product.price.toStringAsFixed(3)} TND
+🔗 $productLink
+
+''');
+    }
+
+    shareText.write('\n💳 Secure Checkout • 🚚 Fast Delivery');
   }
 }

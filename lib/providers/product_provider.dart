@@ -82,7 +82,7 @@ class ProductProvider extends ChangeNotifier {
         throw Exception('At least one product image is required');
       }
 
-      // Validate images before uploading
+      // Validate images
       for (int i = 0; i < imageFiles.length; i++) {
         final file = imageFiles[i];
         if (!await file.exists()) {
@@ -92,11 +92,20 @@ class ProductProvider extends ChangeNotifier {
         if (size > 10 * 1024 * 1024) {
           throw Exception('Image ${i + 1} is too large (max 10MB)');
         }
+        print('Image $i validated: ${size} bytes');
       }
 
-      // Generate product ID and upload images
+      // Generate product ID
       final productId = DateTime.now().millisecondsSinceEpoch.toString();
+      print('Creating product with ID: $productId');
+
+      // Add small delay to ensure Firebase is ready
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Upload images
+      print('Starting image upload...');
       final imageUrls = await _storageService.uploadProductImages(imageFiles, productId);
+      print('All images uploaded successfully: ${imageUrls.length}');
 
       // Create product
       final product = ProductModel(
@@ -116,6 +125,7 @@ class ProductProvider extends ChangeNotifier {
       );
 
       final createdId = await _productRepository.createProduct(product);
+      print('Product created in Firestore with ID: $createdId');
 
       // Update with actual ID
       final finalProduct = product.copyWith(
@@ -131,11 +141,11 @@ class ProductProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       print('Create product error: $e');
+      print('Error type: ${e.runtimeType}');
       _setLoading(false, e.toString());
       return false;
     }
   }
-
   Future<bool> updateProduct(ProductModel product) async {
     try {
       _setLoading(true);

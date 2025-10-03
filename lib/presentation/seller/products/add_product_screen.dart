@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/services/link_generator_service.dart';
 import '../../../presentation/shared/widgets/custom_button.dart';
 import '../../../presentation/shared/widgets/custom_text_field.dart';
 import '../../../providers/product_provider.dart';
@@ -79,7 +80,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     if (success) {
       _showSnackBar('Product created successfully!', Colors.green);
-      Navigator.pop(context);
+      // Get the newly created product to show the link
+      final products = Provider.of<ProductProvider>(context, listen: false).products;
+      final newProduct = products.firstWhere((p) => p.title == _titleController.text.trim());
+      _showProductLinkAfterCreation(newProduct);
     } else {
       _showError(provider.error ?? 'Unknown error occurred');
     }
@@ -107,6 +111,61 @@ class _AddProductScreenState extends State<AddProductScreen> {
               _saveProduct();
             },
             child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+  void _showProductLinkAfterCreation(ProductModel product) {
+    final productLink = LinkGeneratorService.generateProductLink(product.productId);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Product Created!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Your product has been created successfully.'),
+            const SizedBox(height: 16),
+            const Text(
+              'Share this link with customers:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                productLink,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close the dialog
+              Navigator.pop(context); // Go back to products screen
+            },
+            child: const Text('Done'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Share the link
+              LinkGeneratorService.generateShareableLink(
+                productId: product.productId,
+                productTitle: product.title,
+                price: product.price,
+              );
+            },
+            child: const Text('Share Link'),
           ),
         ],
       ),
