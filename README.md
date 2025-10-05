@@ -42,13 +42,9 @@
 
 <div align="center">
 
-| Dashboard | Login Screen |
-|-----------|-------------|
-| ![Dashboard](screenshots/dashboard.png) | ![Login](screenshots/login.png) |
-
-| Add Product | Product Catalog |
-|------------|-----------------|
-| ![Add Product](screenshots/add_product.png) | ![Products](screenshots/products.png) |
+| Dashboard | Add Product | Product Catalog |
+|-----------|-------------|-----------------|
+| ![Dashboard](screenshots/dashboard.png) | ![Add Product](screenshots/add_product.png) | ![Products](screenshots/products.png) |
 
 </div>
 
