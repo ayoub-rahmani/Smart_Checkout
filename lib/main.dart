@@ -9,6 +9,7 @@ import 'minimal_storage_test.dart';
 import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/order_provider.dart';
+import 'presentation/buyer/web_popup/web_popup_wrapper.dart';
 
 void main() {
   runApp(const AppInitializer());
@@ -36,12 +37,15 @@ class _AppInitializerState extends State<AppInitializer> {
     try {
       WidgetsFlutterBinding.ensureInitialized();
 
+      // Only set system UI for mobile platforms
+      if (!kIsWeb) {
       SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
         systemNavigationBarColor: Colors.white,
         systemNavigationBarIconBrightness: Brightness.dark,
       ));
+      }
 
       // Initialize Firebase with 30 seconds timeout
       await FirebaseService.initialize().timeout(
@@ -52,6 +56,8 @@ class _AppInitializerState extends State<AppInitializer> {
       );
       // Add this to your main.dart or wherever you initialize your app
       await MinimalStorageTest.testConnection();
+
+
 
       if (mounted) {
         setState(() {
@@ -149,7 +155,32 @@ class _AppInitializerState extends State<AppInitializer> {
       );
     }
 
-    // App initialized: inject Providers and run main app
+    // Check if this is a web popup (product checkout link)
+    if (kIsWeb) {
+      final uri = Uri.base;
+      final hasProductParam = uri.queryParameters.containsKey('product');
+      final hasOrderParam = uri.queryParameters.containsKey('order');
+
+      // If accessing via product link, show web popup instead of main app
+      if (hasProductParam || uri.path.contains('/checkout')) {
+        return const WebPopupWrapper();
+      }
+
+      // If accessing order tracking, show tracking page
+      if (hasOrderParam || uri.path.contains('/track')) {
+        // TODO: Create tracking page
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: Scaffold(
+            body: Center(
+              child: Text('Order Tracking Page - Coming Soon'),
+            ),
+          ),
+    );
+  }
+}
+
+    // App initialized: inject Providers and run main app (for sellers)
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),

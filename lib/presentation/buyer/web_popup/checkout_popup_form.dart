@@ -5,8 +5,8 @@ import '../../../core/constants/firebase_constants.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/order_model.dart';
 import '../../../data/repositories/order_repository.dart';
-import '../../../data/services/payement_service.dart';
 import 'confirmation_popup_page.dart';
+
 
 class CheckoutPopupForm extends StatefulWidget {
   final ProductModel product;
@@ -48,8 +48,6 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
   ];
 
   final double _deliveryFee = 7.000;
-  final PaymentService _paymentService = PaymentService();
-
   @override
   void dispose() {
     _nameController.dispose();
@@ -68,33 +66,23 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
     });
 
     try {
-      // Process payment automatically
-      final paymentResult = await _paymentService.processPayment(
-        amount: widget.totalAmount + _deliveryFee,
-        paymentMethod: 'card', // Auto-select card payment for web
-        customerEmail: _emailController.text.trim(),
-      );
-
-      if (paymentResult['success'] == true) {
-        await _createOrder(paymentResult['transactionId']);
-      } else {
-        throw Exception(paymentResult['error'] ?? 'Payment failed');
-      }
+      await _createOrder();
     } catch (e) {
+      if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment failed: $e')),
+          SnackBar(content: Text('Error creating order: $e')),
       );
       setState(() {
         _processingPayment = false;
       });
     }
   }
+  }
 
-  Future<void> _createOrder(String transactionId) async {
+  Future<void> _createOrder() async {
     try {
       final orderRepository = OrderRepository();
 
-      // Create buyer info
       final buyerInfo = BuyerInfo(
         name: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -104,7 +92,6 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
         governorate: _selectedGovernorate,
       );
 
-      // Create order details
       final orderDetails = OrderDetails(
         productTitle: widget.product.title,
         quantity: widget.quantity,
@@ -114,7 +101,6 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
         productImage: widget.product.images.isNotEmpty ? widget.product.images.first : '',
       );
 
-      // Create order
       final order = OrderModel(
         orderId: '',
         orderCode: '',
@@ -122,37 +108,32 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
         productId: widget.product.productId,
         buyerInfo: buyerInfo,
         orderDetails: orderDetails,
-        status: FirebaseConstants.orderStatusConfirmed, // Auto-confirm since payment is processed
-        paymentMethod: FirebaseConstants.paymentD17, // Use online payment for web
+        status: FirebaseConstants.orderStatusPending,
+        paymentMethod: FirebaseConstants.paymentCOD,
         createdAt: DateTime.now(),
         deliveryFee: _deliveryFee,
         totalAmount: widget.totalAmount + _deliveryFee,
-        notes: 'Payment Transaction ID: $transactionId',
+        notes: 'Cash on Delivery - Web Order',
       );
 
       final orderId = await orderRepository.createOrder(order);
       final createdOrder = await orderRepository.getOrderById(orderId);
 
-      // Navigate to confirmation
+      if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => ConfirmationPopupPage(
             order: createdOrder!,
-            transactionId: transactionId,
+              transactionId: '',
           ),
         ),
       );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating order: $e')),
-      );
-      setState(() {
-        _processingPayment = false;
-      });
+      rethrow;
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,7 +146,6 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Back button and title
                 Row(
                   children: [
                     IconButton(
@@ -185,12 +165,9 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
 
                 const SizedBox(height: 20),
 
-                // Order Summary
                 _buildOrderSummary(),
-
                 const SizedBox(height: 24),
 
-                // Customer Information
                 const Text(
                   'Contact Information',
                   style: TextStyle(
@@ -251,7 +228,6 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
 
                 const SizedBox(height: 24),
 
-                // Delivery Address
                 const Text(
                   'Delivery Address',
                   style: TextStyle(
@@ -320,25 +296,62 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
 
                 const SizedBox(height: 32),
 
-                // Payment Info
-                const Text(
-                  'Payment',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Card payment will be processed automatically',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
+                Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+                          Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Payment Options',
+            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+            ),
+          ),
+        ],
+      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        '• Cash on Delivery: Pay when you receive your order',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '• Card Payment: Secure online payment (Coming Soon)',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'For now, all orders use Cash on Delivery. The seller will contact you to confirm.',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
                 const SizedBox(height: 32),
 
-                // Pay Now Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -354,13 +367,27 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
                         ? const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        CircularProgressIndicator(color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Processing Payment...'),
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Confirming Order...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     )
                         : const Text(
-                      'Pay Now',
+                      'Confirm Order',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -459,7 +486,7 @@ class _CheckoutPopupFormState extends State<CheckoutPopupForm> {
         ],
       ),
     );
-  }
+}
 
   Widget _buildSummaryRow(String label, String value, {bool isTotal = false}) {
     return Padding(

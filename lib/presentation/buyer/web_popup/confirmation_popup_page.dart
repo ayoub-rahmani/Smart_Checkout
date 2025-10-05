@@ -49,7 +49,7 @@ class ConfirmationPopupPage extends StatelessWidget {
 
                     // Success Message
                     const Text(
-                      'Payment Successful!',
+                      'Order Confirmed!',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -60,7 +60,7 @@ class ConfirmationPopupPage extends StatelessWidget {
                     const SizedBox(height: 12),
 
                     const Text(
-                      'Your order has been confirmed and payment processed successfully.',
+                      'Thank you for your order! The seller has been notified and will prepare your items for delivery.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.textSecondary,
@@ -68,6 +68,17 @@ class ConfirmationPopupPage extends StatelessWidget {
                       ),
                     ),
 
+                    const SizedBox(height: 8),
+
+                    const Text(
+                      'You will receive a confirmation message with delivery details shortly.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
                     const SizedBox(height: 32),
 
                     // Order Details
@@ -85,18 +96,16 @@ class ConfirmationPopupPage extends StatelessWidget {
                           const SizedBox(height: 8),
                           _buildDetailRow('Amount', '${order.totalAmount.toStringAsFixed(3)} TND'),
                           const SizedBox(height: 8),
-                          _buildDetailRow('Status', 'Confirmed'),
+                          _buildDetailRow('Payment', 'Cash on Delivery'),
                           const SizedBox(height: 8),
-                          _buildDetailRow('Transaction ID', transactionId),
+                          _buildDetailRow('Status', 'Pending Confirmation', statusColor: Colors.orange),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
-
                     // Tracking Info
                     Container(
-                      width: double.infinity,
+                width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.1),
@@ -104,16 +113,16 @@ class ConfirmationPopupPage extends StatelessWidget {
                         border: Border.all(color: AppColors.primary.withOpacity(0.2)),
                       ),
                       child: Column(
-                        children: [
+      children: [
                           const Icon(Icons.track_changes, color: AppColors.primary),
                           const SizedBox(height: 8),
                           const Text(
                             'Track Your Order',
                             style: TextStyle(
-                              fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w600,
                               color: AppColors.primary,
-                            ),
-                          ),
+          ),
+        ),
                           const SizedBox(height: 4),
                           Text(
                             trackingLink,
@@ -126,7 +135,7 @@ class ConfirmationPopupPage extends StatelessWidget {
                               Clipboard.setData(ClipboardData(text: order.orderCode));
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Order code copied!')),
-                              );
+    );
                             },
                             child: const Text('Copy Order Code'),
                           ),
@@ -165,7 +174,7 @@ class ConfirmationPopupPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, {Color? statusColor}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -177,11 +186,12 @@ class ConfirmationPopupPage extends StatelessWidget {
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
+            color: statusColor,
           ),
         ),
       ],
     );
-  }
+}
 }

@@ -1,5 +1,9 @@
 // presentation/buyer/web_popup/product_popup_page.dart
 import 'package:flutter/material.dart';
+
+
+
+
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/repositories/product_repository.dart';
@@ -31,16 +35,24 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
 
   Future<void> _loadProductFromUrl() async {
     try {
-      // In a real implementation, you'd parse URL parameters
-      // For demo, using a mock product ID
-      const productId = 'demo-product-123';
+      final uri = Uri.base;
+      final productId = uri.queryParameters['product'];
+
+      if (productId == null || productId.isEmpty) {
+        setState(() {
+          _error = 'Invalid product link: No product ID found';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('Loading product with ID: $productId');
       final product = await _productRepository.getProductById(productId);
 
       if (product != null) {
         setState(() {
           _product = product;
           _isLoading = false;
-          // Set default variants
           for (var variant in product.variants) {
             if (variant.values.isNotEmpty) {
               _selectedVariants[variant.name] = variant.values.first;
@@ -48,25 +60,25 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
           }
         });
       } else {
-        setState(() {
+    setState(() {
           _error = 'Product not found';
           _isLoading = false;
-        });
-      }
+    });
+  }
     } catch (e) {
-      setState(() {
+    setState(() {
         _error = 'Error loading product: $e';
         _isLoading = false;
-      });
-    }
+    });
+  }
   }
 
   double get _totalPrice => (_product?.price ?? 0) * _quantity;
 
   void _proceedToCheckout() {
-    setState(() {
+                setState(() {
       _showCheckout = true;
-    });
+                });
   }
 
   void _backToProduct() {
@@ -95,7 +107,7 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
           onBack: _backToProduct,
         )
             : _buildProductContent(),
-      ),
+        ),
     );
   }
 
@@ -103,12 +115,12 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
     return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      children: [
           CircularProgressIndicator(color: AppColors.primary),
           SizedBox(height: 16),
           Text('Loading product...'),
-        ],
-      ),
+          ],
+        ),
     );
   }
 
@@ -140,7 +152,7 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
         ),
       ),
     );
-  }
+}
 
   Widget _buildNotFoundState() {
     return const Center(
@@ -164,14 +176,12 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Close button
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () {
-                  // Close the popup - in web this might close the window
                   if (Navigator.canPop(context)) {
                     Navigator.pop(context);
                   }
@@ -180,12 +190,10 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
             ],
           ),
 
-          // Product Images
           _buildImageGallery(),
 
           const SizedBox(height: 16),
 
-          // Product Info
           Text(
             _product!.title,
             style: const TextStyle(
@@ -213,17 +221,14 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
             ),
           ),
 
-          // Variants Selection
           if (_product!.variants.isNotEmpty) ...[
             const SizedBox(height: 20),
             ..._product!.variants.map((variant) => _buildVariantSelector(variant)),
           ],
 
-          // Quantity Selector
           const SizedBox(height: 20),
           _buildQuantitySelector(),
 
-          // Stock Info
           const SizedBox(height: 16),
           Row(
             children: [
@@ -245,7 +250,6 @@ class _ProductPopupPageState extends State<ProductPopupPage> {
             ],
           ),
 
-          // Checkout Button
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
